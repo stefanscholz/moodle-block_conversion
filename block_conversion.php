@@ -25,12 +25,30 @@ class block_conversion extends block_base {
         $this->content->text = '';
         $this->content->footer = '';
 
+        // Check if current user is a temporary user.
+        $istempuser = isloggedin() && !isguestuser() && strpos($USER->username, 'tempuser') === 0;
+
+        if ($istempuser) {
+            // Display conversion form for temporary users.
+            $this->display_temp_user_conversion();
+            return $this->content;
+        }
+
         // Show nothing for logged in users (excluding guests).
         if (isloggedin() && !isguestuser()) {
             return $this->content;
         }
 
         // Display message and button for non-logged in users and guests.
+        $this->display_login_form();
+
+        return $this->content;
+    }
+
+    /**
+     * Display the login form for non-logged in users.
+     */
+    private function display_login_form() {
         $url = new moodle_url('/blocks/conversion/create_temp_user.php');
         
         $this->content->text = html_writer::tag('p', 
@@ -71,8 +89,58 @@ class block_conversion extends block_base {
         ]);
         
         $this->content->text .= html_writer::end_tag('form');
+    }
 
-        return $this->content;
+    /**
+     * Display the conversion form for temporary users.
+     */
+    private function display_temp_user_conversion() {
+        $url = new moodle_url('/blocks/conversion/convert_temp_user.php');
+        
+        $this->content->text = html_writer::tag('p', 
+            get_string('tempusermessage', 'block_conversion')
+        );
+        
+        $this->content->text .= html_writer::start_tag('form', [
+            'method' => 'post',
+            'action' => $url->out(),
+            'class' => 'block-conversion-form'
+        ]);
+        
+        $this->content->text .= html_writer::empty_tag('input', [
+            'type' => 'hidden',
+            'name' => 'sesskey',
+            'value' => sesskey()
+        ]);
+        
+        // Add return URL to redirect back to current page.
+        $this->content->text .= html_writer::empty_tag('input', [
+            'type' => 'hidden',
+            'name' => 'returnurl',
+            'value' => $this->page->url->out(false)
+        ]);
+        
+        // Email input field.
+        $this->content->text .= html_writer::start_div('form-group');
+        $this->content->text .= html_writer::empty_tag('input', [
+            'type' => 'email',
+            'name' => 'email',
+            'placeholder' => get_string('emailplaceholder', 'block_conversion'),
+            'required' => 'required',
+            'class' => 'form-control d-inline-block',
+            'style' => 'width: auto; display: inline-block;'
+        ]);
+        
+        // Submit button.
+        $this->content->text .= ' ';
+        $this->content->text .= html_writer::empty_tag('input', [
+            'type' => 'submit',
+            'value' => get_string('convertbutton', 'block_conversion'),
+            'class' => 'btn btn-primary'
+        ]);
+        $this->content->text .= html_writer::end_div();
+        
+        $this->content->text .= html_writer::end_tag('form');
     }
 
     public function applicable_formats() {
